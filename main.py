@@ -1,8 +1,10 @@
-import subprocess
 import os
-import uuid
 import re
+import uuid
+import asyncio
 import tempfile
+import aiofiles
+
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
@@ -52,27 +54,23 @@ def substitute_inputs(code: str, inputs: list[InputData]) -> str:
     return re.sub(input_pattern, replacer, code, count=len(inputs))
 
 
+async def run_subprocess(command):
+    process = await asyncio.create_subprocess_exec(*command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+    stdout, stderr = await process.communicate()
+    return stdout.decode(), stderr.decode()
+
+
 @app.post("/run")
-def run_jac_code(jac: JacCode):
+async def run_jac_code(jac: JacCode):
     try:
-        # Substitute inputs in code
         processed_code = substitute_inputs(jac.code, jac.inputs)
 
         filename = os.path.join(tempfile.gettempdir(), f"temp_{uuid.uuid4().hex}.jac")
-        with open(filename, "w") as f:
-            f.write(processed_code)
+        async with aiofiles.open(filename, "w") as f:
+            await f.write(processed_code)
 
-        process = subprocess.run(
-            ["jac", "run", filename],
-            capture_output=True,
-            text=True
-        )
+        output, error = await run_subprocess(["jac", "run", filename])
 
-        output = process.stdout
-        error = process.stderr
-
-        os.remove(filename)
-        subprocess.run(["jac", "clean"])
         return {"output": output, "error": error}
 
     except Exception as e:
