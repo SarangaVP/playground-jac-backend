@@ -64,15 +64,8 @@ async def run_subprocess(command):
 async def run_jac_code(jac: JacCode):
     try:
         processed_code = substitute_inputs(jac.code, jac.inputs)
-
-        filename = os.path.join(tempfile.gettempdir(), f"temp_{uuid.uuid4().hex}.jac")
-        async with aiofiles.open(filename, "w") as f:
-            await f.write(processed_code)
-
-        output, error = await run_subprocess(["jac", "run", filename])
-
+        output, error = await run_subprocess(["jac", "run_str", processed_code])
         return {"output": output, "error": error}
-
     except Exception as e:
         return {"error": str(e)}
 
