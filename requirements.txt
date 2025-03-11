@@ -1,5 +1,5 @@
 fastapi[standard]
 uvicorn
-jaclang
+git+https://github.com/Jaseci-Labs/jaseci.git@malitha-str-compile-cli#subdirectory=jac
 pydantic
 aiofiles
